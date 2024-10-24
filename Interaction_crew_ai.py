@@ -150,7 +150,7 @@ class InteractionAgentSystem:
             self.logger.error(f"Error processing agent response: {e}")
             return None
 
-    async def run_round(self, current_observations: Dict[str, str]) -> Dict[str, str]:
+    def run_round(self, current_observations: Dict[str, str]) -> Dict[str, str]:
         """Run a single round of interaction."""
         # Create tasks for each agent
         tasks = []
@@ -169,10 +169,12 @@ class InteractionAgentSystem:
                 tasks=[task],
                 verbose=self.logger.level == logging.DEBUG,
             ))
+            # Print summary of the task and crew
+            self.logger.info(f"Task for {role}: {task.description}")
 
         # Kick off all crews concurrently
-        crew_futures = [crew.kickoff_async() for crew in crews]
-        responses = await asyncio.gather(*crew_futures)
+        responses = [crew.kickoff() for crew in crews]
+        # responses = await asyncio.gather(*crew_futures)
 
         # Process responses into actions
         actions = {}
@@ -182,7 +184,7 @@ class InteractionAgentSystem:
 
         return actions
     
-    async def run_interaction(self) -> Dict[str, Any]:
+    def run_interaction(self) -> Dict[str, Any]:
         """Run the full interaction process for all agents."""
         current_observations = {role: "" for role in self.agents.keys()}
 
@@ -190,7 +192,7 @@ class InteractionAgentSystem:
             self.logger.info(f"Starting round {self.state.round + 1}")
             
             # Get actions from all agents
-            round_actions = await self.run_round(current_observations)
+            round_actions = self.run_round(current_observations)
             
             # Process interactions
             new_observations, state_updates = self.interaction_function(

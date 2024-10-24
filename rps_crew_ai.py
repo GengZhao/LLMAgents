@@ -194,9 +194,9 @@ class RPSExperiment(InteractionAgentSystem):
         return results
 
 # Example usage:
-async def run_rps_experiment(api_key: str, model_name: str = "gpt-4o-mini"):
+def run_rps_experiment(api_key: str, model_name: str = "gpt-4o-mini"):
     experiment = RPSExperiment(api_key=api_key, model_name=model_name)
-    await experiment.run_interaction()
+    experiment.run_interaction()
     
     results = experiment.get_experiment_results()
     
@@ -225,7 +225,7 @@ async def run_rps_experiment(api_key: str, model_name: str = "gpt-4o-mini"):
     return results
 
 if __name__ == "__main__":
-    import asyncio
+    # import asyncio
     
     os.environ["OPENAI_MODEL_NAME"] = "gpt-4o-mini"
     # Replace with your OpenAI API key
@@ -235,7 +235,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     
     # Run the experiment
-    results = asyncio.run(run_rps_experiment(
+    results = run_rps_experiment(
         api_key=API_KEY,
         model_name="gpt-4o-mini",
-    ))
+    )
