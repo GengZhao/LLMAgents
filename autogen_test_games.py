@@ -352,9 +352,12 @@ class Experiment:
 
 # Do not modify the signature of the "main" function.
 def main():
+    config_list_gemini = {"cache_seed": None, "config_list": [{"model": "gemini-1.5-flash", "api_key": "AIzaSyDvF-OPkaZmBVqlHDwVgO2FQbp4iwxcuUU", "api_type": "google"}]}
+
+
     #entrypoint_agent_system_message = "You are working with another agent to help answer the user's query. The other agent is able to take in a list of reviews, and transform it into a list of rankings with a food score, and a customer service score. Please use this score in order to find the overall score. " # TODO
     # example LLM config for the entrypoint agent
-    llm_config = {"config_list": [{"model": "gpt-4o-mini", "api_key": os.environ.get("OPENAI_API_KEY")}]}
+    llm_config = {"cache_seed": None, "config_list": [{"model": "gpt-4o-mini", "api_key": os.environ.get("OPENAI_API_KEY")}]}
 
     # feed the resturaunt data into score extract agent
     player_prompt = "You are an aggressive rock paper scissors player."
@@ -364,7 +367,7 @@ def main():
     player_prompt = "You are an conservative rock paper scissors player."
     player_agent_2 = ConversableAgent("player_2",
                                         system_message=player_prompt,
-                                        llm_config=llm_config)
+                                        llm_config=config_list_gemini)
     player_prompt = "You think about other people's actions before acting and try to predict what they would do given their information."
     
     player_agent_3 = ConversableAgent("player_3",
@@ -373,7 +376,7 @@ def main():
 
     game = RockPaperScissorsMultiplayer(3)
     experiment = Experiment([player_agent_1, player_agent_2, player_agent_3], game)
-    experiment.run_simulation(5, "multi-player")
+    experiment.run_simulation(7, "multi-player")
     #print(experiment.agent_states) 
     print(experiment.get_win_rates())
 
