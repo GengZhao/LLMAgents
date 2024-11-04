@@ -28,18 +28,20 @@ class Game():
         self.results = [None] * 2
         self.utilities = [None] * 2
 
-    def game_interaction_prompt(self, history: []) -> str:
+    def game_interaction_prompt(self, history) -> str:
             prompt = f"You are playing a game of rock, paper, scissors. Choose 'rock', 'paper', or 'scissors'.\n"
             prompt += f"Last 5 games results:\n"
             for i, round_info in enumerate(history[-5:]):  # Show last 5 rounds
                 prompt += f"Round {i}: {round_info}\n"
             return prompt
 
-    def take_action(self, action: str, player_id: int):
+    def take_action(self, resp: str, player_id: int):
         #parses action
         actions = ["rock", "paper", "scissors"]
+        # Parse the last line of the message as the action
+        last_line_final_word = resp.split()[-1]
         for a in actions:
-            if a in action.lower():
+            if a in last_line_final_word.lower():
                 #adds action
                 self.actions[player_id] = a
 
@@ -107,22 +109,8 @@ class RockPaperScissorsMultiplayer(Game):
         self.utilities = [None] * num_players
         self.score = {i: 0 for i in range(num_players)}
 
-    def game_interaction_prompt(self, history: []) -> str:
-            prompt = f"You are playing a game of rock, paper, scissors with {self.num_players} players. Choose 'rock', 'paper', or 'scissors' Your last response should be your action.\n"
-            prompt += f"Last 5 games results:\n"
-            for i, round_info in enumerate(history[-5:]):  # Show last 5 rounds
-                prompt += f"Round {i}: {round_info}\n"
-            return prompt
-
-    def take_action(self, action: str, player_id: int):
-        #parses action
-        actions = ["rock", "paper", "scissors"]
-        for a in actions:
-            if a in action.lower():
-                #adds action
-                self.actions[player_id] = a
-
     def end_turn(self):
+        # TODO: double check: are the updates correct (e.g., any overwriting?)
         # Get the actions of all players
         for i, j in itertools.combinations(range(self.num_players), 2):
             player1_action = self.actions[i]
@@ -171,12 +159,6 @@ class RockPaperScissorsMultiplayer(Game):
                 observations.append(f"You {outcome} against player {i+1}, with utility {utility}. You played {player_action} and player {i+1} played {other_player_action}.")
 
         return "\n".join(observations)
-    
-    def game_summary(self, player_id: int):
-        return self.observation(player_id)
-
-    def utility(self, player_id: int):
-        return self.utilities[player_id]
 
     def winner(self, player_id: int):
         return self.results[player_id] == "win"
@@ -203,21 +185,6 @@ class RockPaperScissors(Game):
         self.results = [None] * 2
         self.utilities = [None] * 2
 
-    def game_interaction_prompt(self, history: []) -> str:
-            prompt = f"You are playing a game of rock, paper, scissors. Choose 'rock', 'paper', or 'scissors'.\n"
-            prompt += f"Last 5 games results:\n"
-            for i, round_info in enumerate(history[-5:]):  # Show last 5 rounds
-                prompt += f"Round {i}: {round_info}\n"
-            return prompt
-
-    def take_action(self, action: str, player_id: int):
-        #parses action
-        actions = ["rock", "paper", "scissors"]
-        for a in actions:
-            if a in action.lower():
-                #adds action
-                self.actions[player_id] = a
-
     def end_turn(self):
         assert len(self.players) == 2, "there should be two players"
         # Get the actions of both players
@@ -241,22 +208,6 @@ class RockPaperScissors(Game):
             self.results = ["lose", "win"]
             self.utilities = [0, 1]
 
-    def observation(self, player_id: int):
-        #returns a string that says loses or wins, and also what the other player played and what you played. 
-        outcome = self.results[player_id]
-
-        other_player_id = 1 - player_id
-        other_player_action = self.actions[other_player_id]
-        player_action = self.actions[player_id]
-        utility = self.utilities[player_id]
-
-        return f"You {outcome}, with utility {utility}. You played {player_action} and your opponent played {other_player_action}."
-    
-    def game_summary(self, player_id: int):
-        return self.observation(player_id)
-
-    def utility(self, player_id: int):
-        return self.utilities[player_id]
     def winner(self, player_id: int):
         return self.results[player_id] == "win"
 
@@ -277,11 +228,13 @@ class Experiment:
 
 
     def execute_round_two_player(self) -> None:
+        # Iterate over all pairs of agents and play a game
         for player_1 in self.agents:
             for player_2 in self.agents:
                 if player_1.name != player_2.name:
                     self.play_single_game([player_1, player_2])
         self.current_round += 1
+
     def execute_round(self) -> None:
         self.play_single_game(self.agents)
         self.current_round += 1
@@ -327,7 +280,8 @@ class Experiment:
                 win_rate = state['wins'] / total_games
             win_rates[agent_name] = win_rate
         return win_rates
-    def run_simulation(self, rounds: int, game_type: str) -> Dict[str, float]:
+
+    def run_simulation(self, rounds: int, game_type: str|None = None) -> Dict[str, float]:
         if game_type == "two_player":
             for i in range(rounds):
                 self.execute_round_two_player()
@@ -335,6 +289,14 @@ class Experiment:
             for i in range(rounds):
                 self.execute_round()
         
+    
+    def get_history_actions(self) -> Dict[str, List[str]]:
+        history_actions = {}
+        for agent_name, state in self.agent_states.items():
+            history_actions[agent_name] = state['history']
+        return history_actions
+
+
             
 
 
@@ -350,36 +312,35 @@ class Experiment:
 
 
 
-# Do not modify the signature of the "main" function.
 def main():
-    config_list_gemini = {"cache_seed": None, "config_list": [{"model": "gemini-1.5-flash", "api_key": "AIzaSyDvF-OPkaZmBVqlHDwVgO2FQbp4iwxcuUU", "api_type": "google"}]}
-
-
-    #entrypoint_agent_system_message = "You are working with another agent to help answer the user's query. The other agent is able to take in a list of reviews, and transform it into a list of rankings with a food score, and a customer service score. Please use this score in order to find the overall score. " # TODO
-    # example LLM config for the entrypoint agent
+    # Read the API keys from the environment
+    config_list_gemini = {"cache_seed": None, "config_list": [{"model": "gemini-1.5-flash", "api_key": os.environ.get("GEMINI_API_KEY"), "api_type": "google"}]}
     llm_config = {"cache_seed": None, "config_list": [{"model": "gpt-4o-mini", "api_key": os.environ.get("OPENAI_API_KEY")}]}
 
-    # feed the resturaunt data into score extract agent
-    player_prompt = "You are an aggressive rock paper scissors player."
+    player_prompt = "You are a rock paper scissors player. Reason about the Nash Equilibrium and choose your action. The last line should contain a single word that is your chosen action."
     player_agent_1 = ConversableAgent("player_1",
                                         system_message=player_prompt,
                                         llm_config=llm_config)
-    player_prompt = "You are an conservative rock paper scissors player."
+
+    player_prompt = "Play rock paper scissors uniformly at random. The last line should contain a single word that is your chosen action."
     player_agent_2 = ConversableAgent("player_2",
                                         system_message=player_prompt,
-                                        llm_config=config_list_gemini)
-    player_prompt = "You think about other people's actions before acting and try to predict what they would do given their information."
+                                        llm_config=llm_config) # config_list_gemini)
     
-    player_agent_3 = ConversableAgent("player_3",
-                                        system_message=player_prompt,
-                                        llm_config=llm_config)
+    player_prompt = "You think about other people's actions before acting and try to predict what they would do given their information. The last line should contain a single word that is your chosen action."
+    # player_agent_3 = ConversableAgent("player_3",
+                                        # system_message=player_prompt,
+                                        # llm_config=llm_config)
 
-    game = RockPaperScissorsMultiplayer(3)
-    experiment = Experiment([player_agent_1, player_agent_2, player_agent_3], game)
-    experiment.run_simulation(7, "multi-player")
+    # game = RockPaperScissorsMultiplayer(3)
+    # experiment = Experiment([player_agent_1, player_agent_2, player_agent_3], game)
+    # experiment.run_simulation(7, "multi-player")
+    game = RockPaperScissors()
+    experiment = Experiment([player_agent_1, player_agent_2], game)
+    experiment.run_simulation(20)
     #print(experiment.agent_states) 
     print(experiment.get_win_rates())
-
+    print(experiment.get_history_actions())
    
     
 
